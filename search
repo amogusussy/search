@@ -59,7 +59,6 @@ def images(site, search):
     numberOfImages = 10
 
     for i in data[:10]:
-        # imgList.append(f"https://{site}/image_proxy.php?url={i['thumbnail']}")
         imgList.append(i["thumbnail"])
     os.mkdir("./img/")
 
@@ -82,7 +81,12 @@ def images(site, search):
             exit(0)
     elif x == "s":
         i = input(f"Which one do you want to save? 1-{numberOfImages}: ")
-        path = input("Where do you want to save this? ")
+        path = input("What directory do you want to save this in? ")
+        file = input("What do you want to call it? ")
+        if not os.path.exists(path):
+            os.mkdir(path)
+        if not os.path.exists(f"{path}/{file}"):
+            os.mknod(path + file)
         r = get(data[int(i)-1]["url"])
         with open(path, "wb") as f:
             f.write(r.content)
@@ -171,9 +175,8 @@ sts = [
     ,"librex.beparanoid.de"
     ,"search.davidovski.xyz"
     ,"search.madreyk.xyz"
-    # ,"librex.catalyst.sx"
     ]
-st = choice(sts) # random.choice(sts)
+ST = choice(sts) # random.choice(sts)
 
 tmp = argv.copy()
 
@@ -188,15 +191,16 @@ if len(tmp) < 2:
 if __name__ == "__main__":
     # Torrents
     if "-t" in argv:
-        torrents(st, sch)
+        torrents(ST, sch)
         exit(0)
     # Images
     if "-i" in argv:
-        images(st, sch)
+        images(ST, sch)
         exit(0)
     # Videos
     if "-v" in argv:
-        videos(st, sch)
+        videos(ST, sch)
         exit(0)
     # Default to search
-    search(st, sch)
+    search(ST, sch)
+
