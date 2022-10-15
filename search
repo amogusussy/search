@@ -195,8 +195,14 @@ if __name__ == "__main__":
         exit(0)
     # Images
     if "-i" in argv:
-        images(ST, sch)
-        exit(0)
+        try:
+            images(ST, sch)
+            exit(0)
+        except:
+            print("An error happened. Try rerunning the command.")
+            if os.path.exists("./img/"):
+                rmtree("./img/")
+            exit(0)
     # Videos
     if "-v" in argv:
         videos(ST, sch)
