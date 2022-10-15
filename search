@@ -1,0 +1,202 @@
+#!/usr/bin/python3
+import subprocess
+import os
+
+from html import unescape
+from random import choice
+from requests import get
+from sys import argv
+from shutil import which, rmtree
+from urllib.parse import quote
+from textwrap import fill
+
+class bg:
+    PINK = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    NORM = '\033[0m'
+
+def search(site, search):
+    URL = f"https://{site}/api.php?q={search}&p=0&type=0"
+    data = get(url=URL).json()
+
+
+    x = 1 # Track if "special_respone" is in the data set <-- For indexing
+    
+    # Output the data in a human-readable format
+    for datum in data:
+        if not "special_response" in datum:
+            print(
+            "".join([
+                bg.GREEN, str(data.index(datum) + x), " ",
+                bg.BLUE, unescape(datum['title']), "\n",
+                bg.NORM, fill(unescape(datum["description"])), "\n",
+                bg.RED, datum["base_url"], bg.NORM,
+                "\n"
+            ]))
+        else:
+            x = 0
+    # Prompt to ask which link the user wants to open
+    which = int(input("Which one do you want? "))
+    
+    # Open with default browser <-- Only works with unix-like machines
+    
+    with open(os.devnull) as null:
+        process = subprocess.Popen(["xdg-open", (data[which-x])["url"]],
+                    stdin=null, stderr=null, stdout=null,
+                    start_new_session=True)
+    exit(0)
+
+def images(site, search):
+    URL = f"https://{site}/api.php?q={search}&p=0&type=1"
+    data = get(URL).json()
+
+    imgList = list()
+
+    numberOfImages = 10
+
+    for i in data[:10]:
+        # imgList.append(f"https://{site}/image_proxy.php?url={i['thumbnail']}")
+        imgList.append(i["thumbnail"])
+    os.mkdir("./img/")
+
+    for i in imgList:
+        r = get(i)
+        with open(f"./img/{imgList.index(i) + 1}", "wb") as f:
+            f.write(r.content)
+    subprocess.call(["feh", "./img"])
+    rmtree("./img/")
+
+    x = input("Do you want to save, open the website, or neither? (s/o/n) ")
+    if x == "n":
+        exit(0)
+    elif x == "o":
+        i = input(f"which one do you want to open? 1-{numberOfImages + 1}: ")
+        with open(os.devnull) as null:
+            process = subprocess.Popen(["xdg-open", data[int(i)-1]["url"]],
+                            stdin=null, stderr=null, stdout=null,
+                            start_new_session=False)
+            exit(0)
+    elif x == "s":
+        i = input(f"Which one do you want to save? 1-{numberOfImages}: ")
+        path = input("Where do you want to save this? ")
+        r = get(data[int(i)-1]["url"])
+        with open(path, "wb") as f:
+            f.write(r.content)
+
+def torrents(site, search):
+    URL = f"https://{site}/api.php?q={search}&p=0&type=3"
+    data = get(url=URL).json()
+
+    numberOfOutputs = 8
+
+    def output(a):
+        for i in range(a):
+            torrent = data[i]
+            if torrent["seeders"] != 0:
+                name = unescape(str(torrent['name']))
+                seeders = str(torrent['seeders'])
+                leechers = str(torrent['leechers'])
+                size = str(torrent['size'])
+                source = str(torrent['source'])
+                print(f"[{i + 1}]{bg.RED} {name} \n ---{bg.GREEN} [se] {seeders} {bg.PINK} [le] {leechers} {bg.BLUE} [size] {size} {bg.YELLOW} [src] {source} {bg.NORM}\n")
+
+    if len(data) < numberOfOutputs:
+        a = len(data)
+    else:
+        a = numberOfOutputs
+    output(a)
+
+    try:
+        x = int(input("Which torrent would you like? ")) - 1
+    except ValueError:
+        print(f"Please enter a number between 1 and {numberOfOutputs}")
+
+    if "1337x" in data[x]['source']:
+        re = str(f"https://{site}{data[x]['magnet']}")
+        magnet = re
+    else:
+        magnet = data[x]["magnet"]
+    with open(os.devnull) as null:
+        process = subprocess.Popen(["xdg-open", magnet],
+                        stdin=null, stderr=null, stdout=null,
+                        start_new_session=True)
+    exit(0)
+
+def is_tool(name):
+    return which(name) is not None
+
+
+def videos(site, search):
+    URL = f"https://{site}/api.php?q={search}&p=0&type=2"
+    data = get(URL).json()
+
+    numberOfOutputs = 10
+
+    for i in data[:numberOfOutputs]:
+        try:
+            print(f"\033[92m{data.index(i) + 1}: \033[0m", end="")
+            print(f"\033[94m{unescape(i['title']).strip()}\n\033[0m", end="")
+
+            if "date" in i:
+                print(unescape(i["date"].strip()))
+            print(f"\033[91m{unescape(i['base_url'])}\n\033[0m", end="")
+            print()
+        except:
+            print("Try re-running the command, otherwise report it with the following contents:")
+            print("\n",site,"\n", i)
+            break
+    x = input("Which one do you want? ")
+
+    for i in ["mpv", "vlc"]:
+        if is_tool(i):
+            with open(os.devnull) as null:
+                process = subprocess.Popen([i, data[int(x) -1]["url"]],
+                                stdin=null, stderr=null, stdout=null,
+                                start_new_session=True)
+            break
+
+args = argv[1:]
+
+for i in args:
+    if "-" in i:
+        args.remove(i)
+sch = ("+".join(args)).replace(" ", "+")
+sch = quote(sch).replace("%2B", "+")
+sts = [
+    "librex.extravi.dev"
+    ,"librex.beparanoid.de"
+    ,"search.davidovski.xyz"
+    ,"search.madreyk.xyz"
+    # ,"librex.catalyst.sx"
+    ]
+st = choice(sts) # random.choice(sts)
+
+tmp = argv.copy()
+
+for i in tmp:
+    if "-" in i:
+        tmp.remove(i)
+
+if len(tmp) < 2:
+    print("Enter an argument!\n\033[93mSyntax: search foo bar [-v,-t,-i, {no flags for default search}]\033[0m")
+    exit(0)
+
+if __name__ == "__main__":
+    # Torrents
+    if "-t" in argv:
+        torrents(st, sch)
+        exit(0)
+    # Images
+    if "-i" in argv:
+        images(st, sch)
+        exit(0)
+    # Videos
+    if "-v" in argv:
+        videos(st, sch)
+        exit(0)
+    # Default to search
+    search(st, sch)
